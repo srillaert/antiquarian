@@ -15,7 +15,6 @@ from lxml import html
 from lxml.html import builder
 
 from books import get_books
-from kindlestrip_v136 import main as kindlestrip
 from request import init_request, request, request_cached, dump, undump, copydump, checkpath
 
 config = None
@@ -83,7 +82,7 @@ def transform_articles(book):
     meta_dir = checkpath(epub_dir + "/META-INF")
     content_dir = checkpath(oebps_dir + "/content")
     assets_dir = checkpath(oebps_dir + "/assets")
-    temp_dir = checkpath(gettempdir())
+    temp_dir = gettempdir()
 
     # copy static templates
     copydump("templates/mimetype", epub_dir + "/mimetype")
@@ -113,7 +112,7 @@ def transform_articles(book):
 
         # handle img elements
         for img_element in entry_element.xpath("//img"):
-            for img_del_attrib in ("srcset", "sizes"):
+            for img_del_attrib in ("fetchpriority", "srcset", "sizes"):
                 if img_del_attrib in img_element.attrib:
                     del img_element.attrib[img_del_attrib]
 
@@ -450,40 +449,6 @@ def compile_book(book):
                 os.remove(epub_file)
             sys.exit(-1)
         os.remove(epub_error_file)
-
-    # compile bookpath to mobi-file
-    opf_file = checkpath(config["bookpath"] + "/" + book["name"] + "/OEBPS/content.opf")
-    mobi_sources_filename = checkpath(book["name"] + "-with-sources.mobi")
-    mobi_sources_file = checkpath(config["bookpath"] + mobi_sources_filename)
-    mobi_file = checkpath(config["bookpath"] + "/" + book["name"] + ".mobi")
-    mobi_sources_error_file = checkpath(config["bookpath"] + "/" + book["name"] + "-error-with-sources.mobi.txt")
-
-    if not os.path.exists(mobi_file) and not os.path.exists(mobi_sources_file):
-        cmd = " ".join(
-            (
-                config["kindlegen"],
-                config["compression"],
-                opf_file,
-                "-o",
-                mobi_sources_filename,
-                "2>",
-                mobi_sources_error_file
-            )
-        )
-        errorcode = os.system(cmd)
-        if errorcode != 0:
-            print "errors found... see", mobi_sources_error_file
-            with open(mobi_sources_error_file, "r") as fin:
-                print fin.read()
-            sys.exit(-1)
-        # move generated file to normal place
-        shutil.move(os.path.join(config["bookpath"], book["name"], "OEBPS", mobi_sources_filename), mobi_sources_file)
-        os.remove(mobi_sources_error_file)
-
-    # strip mobi file
-    if not os.path.exists(mobi_file):
-        kindlestrip(("", mobi_sources_file, mobi_file))
-        os.remove(mobi_sources_file)
 
     os.chdir(cwd)
 
